@@ -1,0 +1,127 @@
+RAPPORT - IMPLEMENTATION DOCKER DU PROJET MERN TODO
+Date: 24 avril 2026
+
+1) OBJECTIF
+L'objectif etait de conteneuriser une application MERN (MongoDB, Express, React, Node.js)
+pour permettre un deploiement local simple via Docker Compose, sans installer Node.js sur
+la machine hote.
+
+2) PREPARATION DE LA PARTIE DOCKER
+Les fichiers suivants ont ete crees:
+- backend/Dockerfile
+- backend/.dockerignore
+- frontend/Dockerfile
+- frontend/.dockerignore
+- docker-compose.yml
+
+Explication:
+- Chaque service applicatif (backend et frontend) possede son image Docker.
+- MongoDB est lance via une image officielle.
+- Docker Compose orchestre l'ensemble des services.
+
+3) DOCKERFILE DU BACKEND
+Base image utilisee:
+- node:20-alpine
+
+Etapes implementees:
+- Definition du repertoire de travail (/app)
+- Copie des fichiers package*.json
+- Installation des dependances (npm install)
+- Copie du code source backend
+- Exposition du port 5000
+- Commande de demarrage: npm run dev
+
+Objectif:
+- Isoler l'API Express dans un conteneur reproductible et portable.
+
+4) DOCKERFILE DU FRONTEND
+Base image utilisee:
+- node:20-alpine
+
+Etapes implementees:
+- Definition du repertoire de travail (/app)
+- Copie des fichiers package*.json
+- Installation des dependances (npm install)
+- Copie des fichiers React/Vite
+- Exposition du port 5173
+- Demarrage Vite avec host 0.0.0.0
+
+Objectif:
+- Rendre l'interface React accessible depuis le navigateur de la machine hote.
+
+5) FICHIERS .DOCKERIGNORE
+Les fichiers/dossiers non necessaires ont ete exclus:
+- node_modules
+- .env
+- npm-debug.log
+- .git
+
+Objectif:
+- Reduire la taille du contexte de build
+- Accelerer les builds Docker
+- Eviter d'envoyer des fichiers sensibles ou inutiles
+
+6) ORCHESTRATION AVEC DOCKER COMPOSE
+Le fichier docker-compose.yml contient trois services:
+- mongo
+- backend
+- frontend
+
+Configuration principale:
+- Reseau Docker commun entre les services
+- Variables d'environnement du backend:
+  PORT=5000
+  MONGO_URI=mongodb://mongo:27017/todoapp
+- Variable d'environnement du frontend:
+  VITE_API_URL=http://localhost:5000/api
+- Mapping des ports:
+  27017:27017 (MongoDB)
+  5000:5000 (Backend)
+  5173:5173 (Frontend)
+- Volume persistant MongoDB pour conserver les donnees
+
+7) COMMANDES EXECUTEES POUR BUILD ET RUN
+Commande principale de lancement:
+- docker compose up --build -d
+
+Explication:
+- --build force la construction des images
+- -d execute les conteneurs en arriere-plan
+
+Verification des services:
+- docker compose ps
+
+Consultation des logs:
+- docker compose logs -f backend
+- docker compose logs -f frontend
+- docker compose logs -f mongo
+
+Arret des services:
+- docker compose down
+
+Arret + suppression des volumes:
+- docker compose down -v
+
+8) PROBLEME RENCONTRE ET CORRECTION
+Probleme:
+- Le service MongoDB avec l'image mongo:7 redemarrait en boucle (code 132)
+  sur la machine cible.
+
+Correction appliquee:
+- Changement de l'image MongoDB vers mongo:4.4 dans docker-compose.yml
+- Pull explicite de l'image compatible:
+  docker pull mongo:4.4
+
+Resultat:
+- Les trois conteneurs demarrent correctement en etat Up.
+
+9) VALIDATION FONCTIONNELLE FINALE
+Apres correction:
+- Frontend accessible: http://localhost:5173
+- Backend actif: http://localhost:5000
+- MongoDB actif: localhost:27017
+
+Conclusion:
+- La conteneurisation Docker de l'application MERN est fonctionnelle.
+- Le deploiement local est simplifie et reproductible.
+- La stack peut etre lancee sur Ubuntu via Docker Compose en une commande.
