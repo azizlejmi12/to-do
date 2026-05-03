@@ -1,8 +1,8 @@
-import cors from "cors";
-import dotenv from "dotenv";
-import express from "express";
-import { connectDB } from "./config/db.js";
-import todoRoutes from "./routes/todoRoutes.js";
+import cors from 'cors';
+import dotenv from 'dotenv';
+import express from 'express';
+import { connectDB } from './config/db.js';
+import todoRoutes from './routes/todoRoutes.js';
 
 dotenv.config();
 
@@ -12,11 +12,16 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/health", (_req, res) => {
-  res.status(200).json({ message: "API is running" });
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    message: 'API is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
-app.use("/api/todos", todoRoutes);
+
+app.use('/api/todos', todoRoutes);
 
 connectDB().then(() => {
   app.listen(PORT, () => {
