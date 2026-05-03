@@ -1,0 +1,166 @@
+# ============================================================
+# PIPELINE CI — GitHub Actions
+# Projet : TodoApp MERN — Chaîne DevOps complète
+# Déclenchement : push ou pull_request sur dev ou main
+# ============================================================
+
+name: CI Pipeline
+
+# ============================================================
+# DÉCLENCHEURS
+# Le pipeline se lance automatiquement quand :
+# - tu fais un push sur dev ou main
+# - tu crées une Pull Request vers dev ou main
+# ============================================================
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+# ============================================================
+# JOBS
+# Chaque job s'exécute sur une machine virtuelle Ubuntu fraîche
+# ============================================================
+jobs:
+
+  # ============================================================
+  # JOB 1 : CI Backend
+  # Lint + Tests du backend Node.js/Express
+  # ============================================================
+  backend-ci:
+    name: Backend — Lint & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # Étape 1 : Télécharger le code depuis GitHub
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Étape 2 : Installer Node.js version 20
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      # Étape 3 : Installer les dépendances backend
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      # Étape 4 : Lancer ESLint sur le code backend
+      # Si ESLint trouve des erreurs → le pipeline échoue ici
+      - name: Lint backend
+        working-directory: backend
+        run: npm run lint
+
+      # Étape 5 : Lancer les tests Jest
+      # Si un test échoue → le pipeline échoue ici
+      - name: Run backend tests
+        working-directory: backend
+        run: npm test
+
+  # ============================================================
+  # JOB 2 : CI Frontend
+  # Lint du frontend React/Vite
+  # ============================================================
+  frontend-ci:
+    name: Frontend — Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+  # ============================================================
+  # JOB 3 : Analyse qualité SonarCloud
+  # S'exécute après que backend-ci ET frontend-ci réussissent
+  # ============================================================
+  sonarcloud:
+    name: SonarCloud — Analyse qualité
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Nécessaire pour que SonarCloud analyse l'historique Git
+          fetch-depth: 0
+
+      # SonarCloud analyse le code et génère un rapport de qualité
+      # Le pipeline échoue si le "Quality Gate" n'est pas passé
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+
+  # ============================================================
+  # JOB 4 : Build Docker + Push DockerHub
+  # S'exécute UNIQUEMENT si tous les jobs précédents réussissent
+  # et UNIQUEMENT sur les branches dev et main (pas les PRs)
+  # ============================================================
+  docker-build-push:
+    name: Docker — Build & Push
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci, sonarcloud]
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Se connecter à DockerHub avec les secrets configurés
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Configurer Docker Buildx (builder avancé)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Construire et pousser l'image backend
+      # Tag : username/projetmern-backend:latest
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/projetmern-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Construire et pousser l'image frontend
+      # Tag : username/projetmern-frontend:latest
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/projetmern-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
