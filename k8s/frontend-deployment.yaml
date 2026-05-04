@@ -21,7 +21,7 @@ spec:
         - containerPort: 5173
         env:
         - name: VITE_API_URL
-          value: "http://localhost:30500/api"
+          value: "http://192.168.49.2:30500/api"
 ---
 apiVersion: v1
 kind: Service
