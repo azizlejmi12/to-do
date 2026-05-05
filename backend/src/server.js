@@ -23,7 +23,11 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-
+// Endpoint métriques — utilisé par Prometheus
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
 app.use('/api/todos', todoRoutes);
 
 connectDB().then(() => {
