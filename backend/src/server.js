@@ -3,11 +3,14 @@ import dotenv from 'dotenv';
 import express from 'express';
 import { connectDB } from './config/db.js';
 import todoRoutes from './routes/todoRoutes.js';
+import client from 'prom-client';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics();
 
 app.use(cors());
 app.use(express.json());
@@ -28,3 +31,4 @@ connectDB().then(() => {
     console.log(`Server started on http://localhost:${PORT}`);
   });
 });
+
