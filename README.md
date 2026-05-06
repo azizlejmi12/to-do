@@ -113,7 +113,7 @@ projetmern/
 
 ```bash
 # 1. Cloner le repository
-git clone https://github.com/azizlejmi12/to-do.git
+git clone https://github.com/<azizlejmi12>/to-do.git
 cd projetmern
 
 # 2. Lancer toute la stack en arrière-plan
@@ -211,3 +211,56 @@ cp frontend/.env.example frontend/.env
 
 **Lejmi mohamed aziz** — IT Business School 2026  
 Projet : Mini Projet DevOps — Chaîne CI/CD complète
+
+---
+
+## 🔄 Amélioration continue (IMPROVE)
+
+### Points faibles identifiés
+
+**1. Stabilité de Minikube sur VM limitée**
+Le cluster Kubernetes tourne sur une VM avec 6GB de RAM partagés entre
+Ubuntu, Docker, Minikube et les pods. Cela cause des redémarrages 
+fréquents des pods et une instabilité lors des pics de charge.
+
+**2. Persistence des données MongoDB**
+MongoDB utilise `emptyDir` comme volume — les données sont perdues 
+si le pod redémarre. En production, il faudrait un `PersistentVolume`.
+
+**3. Images Docker avec tag `latest`**
+Utiliser le tag `latest` ne garantit pas la reproductibilité. 
+En production, chaque image doit avoir un tag unique (ex: git SHA).
+
+**4. Pas de HTTPS**
+Les services sont exposés en HTTP. En production, il faudrait 
+un Ingress Controller avec certificat TLS (Let's Encrypt).
+
+**5. Monitoring frontend absent**
+Seul le backend est monitoré. Le frontend n'expose pas de métriques.
+
+---
+
+### Améliorations proposées
+
+**CI/CD :**
+- Ajouter des tags versionnés pour les images Docker (`git SHA`)
+- Ajouter des tests d'intégration en plus des tests unitaires
+- Mettre en place un cache Docker layer pour accélérer les builds
+- Ajouter une étape de déploiement automatique vers un cluster cloud
+
+**Performance :**
+- Utiliser un `PersistentVolumeClaim` pour MongoDB
+- Ajouter un Horizontal Pod Autoscaler (HPA) pour scaler automatiquement
+- Mettre en place un CDN pour les assets frontend
+
+**Sécurité :**
+- Ajouter des Network Policies Kubernetes pour isoler les services
+- Utiliser des Kubernetes Secrets pour les variables d'environnement
+- Mettre en place HTTPS avec cert-manager et Let's Encrypt
+- Scanner les images avec Trivy à chaque déploiement ArgoCD
+
+**Monitoring :**
+- Ajouter des métriques métier (nombre de todos créés, temps de réponse API)
+- Configurer des alertes email/Slack avec Alertmanager
+- Ajouter des logs centralisés avec la stack ELK (Elasticsearch, Logstash, Kibana)
+- Monitorer MongoDB avec mongodb-exporter
